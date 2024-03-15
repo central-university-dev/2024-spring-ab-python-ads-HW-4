@@ -1,3 +1,9 @@
-FROM postgres:13.3
-RUN apt update && apt install python3 python3-pip postgresql-plpython3-${PG_MAJOR} -y
-RUN echo 'CREATE EXTENSION IF NOT EXISTS plpython3u;' > /docker-entrypoint-initdb.d/py3.sql
+FROM python:3.8
+
+WORKDIR /code
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY ./app /code/app
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]

@@ -1,0 +1,1 @@
+SELECT * FROM most_common_city()
