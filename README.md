@@ -1,18 +1,95 @@
-# 2024-spring-ab-python-ads-HW-4
+# OSM Tree Counter API
 
-## Интеграции и БД + повторение прошлого семестра :)
+A FastAPI service that queries the OpenStreetMap Overpass API to return the number of trees in a given city for a given year. Every successful request is logged to PostgreSQL, and a stored procedure identifies the most frequently queried city.
 
-* Реализовать с помощью FastAPI приложение с эндпоинтом (POST), позволяющим получить количество деревьев в определенном городе в определенном году с помощью Open Street Map.
-  API (см. example 3 здесь: https://wiki.openstreetmap.org/wiki/OSMPythonTools). Название города и страны + год должны передаваться в теле запроса.
-* Для обращения к Open Street Map API использовать библиотеку requests, НЕ OSMPythonTools.
-* Каждый успешный запрос должен логироваться в базу данных (postgresql).
-* Реализовать хранимую процедуру в базе данных на plpython, вычисляющую город, который встретился наибольшее количество раз в истории обращений к эндпоинту.
+## Project Structure
 
-Подсказка - Dockerfile для postgres с plpython лежит в репе.
+```
+Counting-trees-Open-Street-Map/
+├── app/
+│   ├── main.py            # FastAPI endpoints
+│   ├── models.py          # SQLAlchemy ORM model (Trees table)
+│   ├── schemas.py         # Pydantic input schema
+│   ├── database.py        # PostgreSQL engine and session setup
+│   └── model_predict.py   # Overpass API query and response parsing
+├── tests/
+│   └── __init__.py
+├── database.sql           # PostgreSQL init: Trees table + most_frequent_city() procedure
+├── app.Dockerfile
+├── pg.Dockerfile
+├── docker-compose.yaml    # FastAPI app + PostgreSQL 13.3
+├── Makefile               # lint, format, check targets
+└── pyproject.toml
+```
 
-**Критерии оценки**
-* Реализован эндопинт - +2 балла
-* Используется библиотека requests - +1 балл
-* Реализован docker-compose с приложением и базой данных - +4 балла
-* Реализована хранимая процедура - +2 балла
-* Правильная структура репозитория - +1 балл
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Welcome message |
+| POST | `/information` | Returns tree count for a city/country/year |
+
+**Request body for `/information`:**
+
+```json
+{
+  "city": "Berlin",
+  "country": "Germany",
+  "year": "2022"
+}
+```
+
+The endpoint queries Overpass API for OSM nodes tagged `natural=tree` within the specified area, filtered by date. The result and request timestamp are saved to the database.
+
+## Database
+
+The `Trees` table logs all requests:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | Integer | Primary key |
+| `city` | String | Queried city |
+| `country` | String | Queried country |
+| `year` | Integer | Queried year |
+| `trees_count` | Integer | Tree count returned |
+| `request_time` | DateTime | Timestamp of request |
+
+`most_frequent_city()` - stored procedure that returns the city with the highest number of logged queries.
+
+## Configuration
+
+Set in `.env`:
+
+| Variable | Description |
+|----------|-------------|
+| `DB_URL` | PostgreSQL connection string |
+
+Default for docker-compose: `postgresql+psycopg2://postgres:postgres@postgres:5432/postgres`
+
+## Running with Docker
+
+```bash
+docker-compose up --build
+```
+
+API available at `http://localhost:8000`. PostgreSQL at port 5432.
+
+## Requirements
+
+```
+fastapi
+uvicorn
+sqlalchemy
+psycopg2
+requests
+osmpythontools
+pandas
+numpy
+httpx
+python-dotenv
+pytest
+black
+flake8
+pylint
+mypy
+```
